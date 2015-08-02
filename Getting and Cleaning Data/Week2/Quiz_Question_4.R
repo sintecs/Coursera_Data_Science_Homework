@@ -1,0 +1,7 @@
+connection <- url("http://biostat.jhsph.edu/~jleek/contact.html")
+htmlData <- readLines(connection)
+close(connection)
+nchar(htmlData[10])
+nchar(htmlData[20])
+nchar(htmlData[30])
+nchar(htmlData[100])
