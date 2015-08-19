@@ -16,6 +16,6 @@ balt.plot <- qplot(Year, TotalEmissions, data = total.emissions, facets = . ~ Ty
 balt.plot <- balt.plot + stat_smooth(method = "lm", aes(group = 1))
 balt.plot
 
-#write the file plot1.png
+## write the file plot1.png
 dev.copy(device = png, "plot3.png")
 dev.off()

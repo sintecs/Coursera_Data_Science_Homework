@@ -13,6 +13,6 @@ options(scipen = 5)
 plot(total.emissions[, "Year"], total.emissions[, "TotalEmissions"], type = "l", xlab = "Year", ylab = "Total Emissions", main = "Trend in blue")
 abline(lm(total.emissions[, "TotalEmissions"] ~ total.emissions[, "Year"]), col = "blue")
 
-#write the file plot1.png
+## write the file plot1.png
 dev.copy(device = png, "plot1.png")
 dev.off()
