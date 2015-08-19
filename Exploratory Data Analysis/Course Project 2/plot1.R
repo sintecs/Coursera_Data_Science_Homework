@@ -10,7 +10,7 @@ colnames(total.emissions) <- c("Year", "TotalEmissions")
 options(scipen = 5)
 
 ## Plot a line chart and fit a line
-plot(total.emissions[, "Year"], total.emissions[, "TotalEmissions"], type = "l", xlab = "Year", ylab = "Total Emissions", main = "Trend in blue", scipen = 5)
+plot(total.emissions[, "Year"], total.emissions[, "TotalEmissions"], type = "l", xlab = "Year", ylab = "Total Emissions", main = "Trend in blue")
 abline(lm(total.emissions[, "TotalEmissions"] ~ total.emissions[, "Year"]), col = "blue")
 
 #write the file plot1.png
