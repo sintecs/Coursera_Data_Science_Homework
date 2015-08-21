@@ -9,13 +9,16 @@ output: html_document
 knitr::opts_chunk$set(cache = TRUE)
 ## URL of the dataset and filename
 sourceDataURL <- 'https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2'
-filename <- 'repdata-data-StormData.csv'
 
 ## Temporary File for storing the downloaded zip and extract the files we want into R
-temp <- tempfile()
-download.file(sourceDataURL, temp, method = "libcurl")
-weather.data <- read.csv(temp)
-unlink(temp)
+destfilename <- "repdata_data_StormData.csv.bz2"
+if (!file.exists(destfilename))
+{
+    download.file(sourceDataURL, destfilename, method = "libcurl")
+    weather.data <- read.csv(destfilename)
+}
+```
+Load and summarize the downloaded data
+```{r}
 summary(weather.data)
 ```
-
