@@ -15,10 +15,26 @@ destfilename <- "repdata_data_StormData.csv.bz2"
 if (!file.exists(destfilename))
 {
     download.file(sourceDataURL, destfilename, method = "libcurl")
-    weather.data <- read.csv(destfilename)
 }
+weather.data <- read.csv(destfilename)
 ```
-Load and summarize the downloaded data
+##Load and summarize the downloaded data
 ```{r}
 summary(weather.data)
+
 ```
+##Cleanup the EVTYPE column using grep
+Though the current [Storm Data Documentation][1] book in section 2.1.1, Storm Data Event Table denotes only 48 different event types, the raw data contains as of this writing 985 events.  As part of pre-processing of this file we will use grep and gsub with regular expressions to replace errors in the names (spelling, punctuation and etc.) with the correct event name from the Storm Data Event Table.  Also, items where there are characters after a known event name will have those characters stripped so the Storm Data Event Table name is used.  If there is an event where the name contains two (or more) values from the Storm Data Event Table the first one noted will be used.
+
+```{r cleanup EVTYPE data}
+sort(levels(weather.data$EVTYPE))
+levels(weather.data$EVTYPE) <- gsub("^tstm wind", "Thunderstorm Wind", unique(levels(weather.data$EVTYPE)), ignore.case = TRUE)
+levels(weather.data$EVTYPE) <- gsub("^thunderstorm wind", "Thunderstorm Wind", unique(levels(weather.data$EVTYPE)), ignore.case = TRUE)
+sort(levels(weather.data$EVTYPE))
+```
+
+
+
+
+
+[1]: https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf
