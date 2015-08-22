@@ -7,7 +7,7 @@ output: html_document
 #An Analysis of Injury and Economic Impact of Weather
 
 ##Synopsis
-This report is an examination and analysis of the NOAA data from 1950 to November 2011.  The recordset used contains 902297 observations of 37 variables.  The variables chosen in this analysis for examination are EVTYPE, FATALITIES, INJURIES, CROPDMG and PROPDMG to determine the impact that each event had and determine which were the two worst impacting event types.
+This report is an examination and analysis of the NOAA data from 1950 to November 2011.  The recordset used contains 902297 observations of 37 variables.  The variables chosen in this analysis for examination are EVTYPE, FATALITIES, INJURIES, CROPDMGEXP, PROPDMGEXP, CROPDMG and PROPDMG to determine the impact that each event had and determine which were the two worst impacting event types.  The worst physical human impact is from tornadoes with excessive heat being second worst in death and thunderstorm winds in injury impact.  The worst events for property damaage are floods and hurricanes/typhoons.
 
 ##Data Processing
 The raw data is loaded from [here][2] and the bz2 file is decompressed and loaded into a variable called weather.data in R.  From here we cleanup the data in the EVTYPE column to standardize misspellings and errors in notation of the data.  We then examine the data in a series of plots to show the events with most human impact (injuries and deaths) and economic impact as a total of economic and crop impact severity.
@@ -25,7 +25,7 @@ if (!file.exists(destfilename))
 weather.data <- read.csv(destfilename)
 ```
 ##Load and aggregate the downloaded data
-##Cleanup the EVTYPE column using grep
+###Cleanup the EVTYPE column using grep
 Though the current [Storm Data Documentation][1] book in section 2.1.1, Storm Data Event Table denotes only 48 different event types, the raw data contains, as of this writing, 985 events.   
 
 As part of pre-processing of this file we will use grep and gsub with regular expressions to replace errors in the names (spelling, punctuation and etc.) with the correct event name from the Storm Data Event Table.  Also, items where there are characters after a known event name will have those characters stripped so the Storm Data Event Table name is used.  If there is an event where the name contains two (or more) values from the Storm Data Event Table the first one noted will be used.
@@ -112,7 +112,10 @@ weather.data.of.interest$EVTYPE <- gsub("^wildfire.*|.*wild.*fire.*", "Wildfire"
 weather.data.of.interest$EVTYPE <- gsub("^winter |winter winter storm.*|^snow.*|weather.*|.*winter storm.*", "Winter Storm", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##Winter Weather
 weather.data.of.interest$EVTYPE <- gsub("^hyperthermia.*|hypothermia.*|^light snow.*|^wintry mix.*", "Winter Weather", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
-
+##Heavy Rain
+weather.data.of.interest$EVTYPE <- gsub(".*heavy.*rain.*", "Heavy Rain", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+##Storm Surge
+weather.data.of.interest$EVTYPE <- gsub(".*storm surge.*", "Storm Surge/Tide", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##Other
 weather.data.of.interest$EVTYPE <- gsub("^Other.*|Apache County", "Other", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ```
@@ -123,6 +126,7 @@ sort(unique(weather.data.of.interest$EVTYPE))
 ##Aggregate the results by EVTYPE
 This sesion of code will aggregate the results of the fatalities, injuries and property/crop damage.  This will be used to generate the visuals below to demonstrate the weather events with the most destructive impact.
 ```{r aggregate results}
+##Aggregate by event type
 total.fatalities <- aggregate(weather.data.of.interest[, "FATALITIES"], by = list(weather.data.of.interest[, "EVTYPE"]), FUN = sum, na.rm = TRUE)
 total.injuries <- aggregate(weather.data.of.interest[, "INJURIES"], by = list(weather.data.of.interest[, "EVTYPE"]), FUN = sum, na.rm = TRUE)
 
@@ -162,7 +166,41 @@ weather.data.of.interest[weather.data.of.interest[, "CROPDMGEXP"] == "K", "CROPD
 weather.data.of.interest[weather.data.of.interest[, "CROPDMGEXP"] == "M", "CROPDMGEXP"] = 6
 weather.data.of.interest[weather.data.of.interest[, "CROPDMGEXP"] == "B", "CROPDMGEXP"] = 9
 ```
+Aggregate the property damage and crop damage results
+```{r aggregate damage results}
+##Get the total property and crop damage raised to the imputted exponent
+PROPDMGAMOUNT <- weather.data.of.interest[, "PROPDMG"] * (10 ^ as.numeric(weather.data.of.interest[, "PROPDMGEXP"]))
+CROPDMGAMOUNT <- weather.data.of.interest[, "CROPDMG"] * (10 ^ as.numeric(weather.data.of.interest[, "CROPDMGEXP"]))
+TOTALDMGAMOUNT <- PROPDMGAMOUNT + CROPDMGAMOUNT
+##Add the total column to the data frame
+weather.data.of.interest <- cbind(weather.data.of.interest, TOTALDMGAMOUNT)
+##Compute the aggregate total by event type
+total.property.damage <- aggregate(
+                                    TOTALDMGAMOUNT
+                                   ,by = list(weather.data.of.interest[, "EVTYPE"])
+                                   ,FUN = sum
+                                   ,na.rm = TRUE
+                                  )
 
+colnames(total.property.damage) <- c("Event Type", "Total")
+```
+##Plot the data to determine worst events to humans and property
+```{r plotting the data}
+##Get the top 10 values for each plot
+top.total.fatalities <- total.fatalities[order(-total.fatalities[, "Total"]), ][1:10, ]
+top.total.injuries <- total.injuries[order(-total.injuries[, "Total"]), ][1:10, ]
+top.total.property.damage <- total.property.damage[order(-total.property.damage[, "Total"]), ][1:10, ]
+```
+## Results
+The worst event for damage to humans (death and injury) are 1.) Tornados and 2.) Excessive Heat. The worst events for property damage are 1.) Floods and 2.) Hurricanes (Typhoons)
+
+##Pie Chart Generation
+```{r generate the charts}
+##Generate pie charts
+pie(top.total.fatalities[, "Total"], labels = top.total.fatalities[, "Event Type"], main = "Top 10 Fatality Causing Events")
+pie(top.total.injuries[, "Total"], labels = top.total.injuries[, "Event Type"], main = "Top 10 Injury Causing Events")
+pie(top.total.property.damage[, "Total"], labels = top.total.property.damage[, "Event Type"], main = "Top 10 Property Damage Causing Events")
+```
 
 
 [1]: https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf
