@@ -4,8 +4,14 @@ author: "Sintecs"
 date: "August 20, 2015"
 output: html_document
 ---
+#An Analysis of Injury and Economic Impact of Weather
 
-```{r load the dataset, echo = FALSE}
+##Synopsis
+This report is an examination and analysis of the NOAA data from 1950 to November 2011.  The recordset used contains 902297 observations of 37 variables.  The variables chosen in this analysis for examination are EVTYPE, FATALITIES, INJURIES, CROPDMG and PROPDMG to determine the impact that each event had and determine which were the two worst impacting event types.
+
+##Data Processing
+The raw data is loaded from [here][2] and the bz2 file is decompressed and loaded into a variable called weather.data in R.  From here we cleanup the data in the EVTYPE column to standardize misspellings and errors in notation of the data.  We then examine the data in a series of plots to show the events with most human impact (injuries and deaths) and economic impact as a total of economic and crop impact severity.
+```{r load the dataset}
 knitr::opts_chunk$set(cache = TRUE)
 ## URL of the dataset and filename
 sourceDataURL <- 'https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2'
@@ -18,17 +24,15 @@ if (!file.exists(destfilename))
 }
 weather.data <- read.csv(destfilename)
 ```
-##Load and summarize the downloaded data
-```{r}
-summary(weather.data)
-
-```
+##Load and aggregate the downloaded data
 ##Cleanup the EVTYPE column using grep
-Though the current [Storm Data Documentation][1] book in section 2.1.1, Storm Data Event Table denotes only 48 different event types, the raw data contains as of this writing 985 events.  As part of pre-processing of this file we will use grep and gsub with regular expressions to replace errors in the names (spelling, punctuation and etc.) with the correct event name from the Storm Data Event Table.  Also, items where there are characters after a known event name will have those characters stripped so the Storm Data Event Table name is used.  If there is an event where the name contains two (or more) values from the Storm Data Event Table the first one noted will be used.
+Though the current [Storm Data Documentation][1] book in section 2.1.1, Storm Data Event Table denotes only 48 different event types, the raw data contains, as of this writing, 985 events.   
 
-First we will find all EVTYPE values where there is an injury, fatality, property damage or crop damage.  Any rows with no injury or damage (i.e. a value of 0 or less) will be subsetted out as they aren't need for this evaluation.
+As part of pre-processing of this file we will use grep and gsub with regular expressions to replace errors in the names (spelling, punctuation and etc.) with the correct event name from the Storm Data Event Table.  Also, items where there are characters after a known event name will have those characters stripped so the Storm Data Event Table name is used.  If there is an event where the name contains two (or more) values from the Storm Data Event Table the first one noted will be used.
 
-```{r cleanup EVTYPE data, echo = FALSE}
+First we will find all EVTYPE values where there is an injury, fatality, property damage or crop damage.  Any rows with no injury or damage (i.e. a value of 0 or less) will be subsetted out as they aren't need for this evaluation.  This leaves 254633 observations that had a recorded impact in which we are interested.
+
+```{r cleanup EVTYPE data}
 weather.data.of.interest <- weather.data[
                                          (
                                           weather.data[, "FATALITIES"] > 0 |
@@ -37,17 +41,24 @@ weather.data.of.interest <- weather.data[
                                           weather.data[, "PROPDMG"] > 0
                                          ),
                                         ]
-
+##Astronomical Low Tide
+weather.data.of.interest$EVTYPE <- gsub(".*Astronomical Low Tide.*", "Astronomical Low Tide", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##Avalanche
 weather.data.of.interest$EVTYPE <- gsub(".*mud.*slide.*|.*avalanc[h]*e.*|^rock slide.*|.*landslide.*", "Avalanche", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##Cold/WindChill
 weather.data.of.interest$EVTYPE <- gsub("^unseasonabl.* cold.*|^cold.*|^extreme.*cold.*|^extreme.*chill.*|fog and cold.*|low temperature", "Cold/Wind Chill", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+##Dust Devil
+weather.data.of.interest$EVTYPE <- gsub("^Dust Devil*", "Dust Devil", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+##Dust Storm
+weather.data.of.interest$EVTYPE <- gsub("^Dust Storm.*|BLowing Dust.*", "Dust Storm", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##Excessive Heat
 weather.data.of.interest$EVTYPE <- gsub(".*excessive heat.*|.*extreme heat.*", "Excessive Heat", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##Extreme Cold/Wind Chill
 weather.data.of.interest$EVTYPE <- gsub(".*record.*cold.*", "Extreme Cold/Wind Chill", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##Flood
-weather.data.of.interest$EVTYPE <- gsub(".*flood.*|.*urban.*", "Flood", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+weather.data.of.interest$EVTYPE <- gsub(".*flood.*|.*urban.*|dam break", "Flood", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+##Fog
+weather.data.of.interest$EVTYPE <- gsub("^dense.*|fog", "Fog", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##Frost/Freeze
 weather.data.of.interest$EVTYPE <- gsub(".*frost.*|.*freezing.*|.*freeze.*", "Frost/Freeze", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##Hail
@@ -55,17 +66,17 @@ weather.data.of.interest$EVTYPE <- gsub(".*hail.*", "Hail", weather.data.of.inte
 ##Heat
 weather.data.of.interest$EVTYPE <- gsub("^unseasonably warm.*|.*drought.*|.*fire.*|^heat.*|^record.*heat.*", "Heat", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##Heavy Rain
-weather.data.of.interest$EVTYPE <- gsub(".*microburst.*|.*torrential rain.*|.*unseasonal rain.*|.*heavy.*rain.*|.*heavy.*mix.*|mixed.*precipitation.*|record.*rainfall|.*rain/wind.*|rain|mixed precip", "Heavy Rain", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+weather.data.of.interest$EVTYPE <- gsub(".*excessive wetness.*|.*microburst.*|.*torrential rain.*|.*unseasonal rain.*|.*heavy.*rain.*|.*heavy.*mix.*|mixed.*precipitation.*|heavy precipitation|heavy shower|record.*rainfall|.*rain/wind.*|downburst|cool and wet|drowning|rain|mixed precip|coastal.*", "Heavy Rain", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##Heavy Snow
 weather.data.of.interest$EVTYPE <- gsub("^heavy snow.*.*lake.*effect.*|.*snow.*|.*blizzard.*", "Heavy Snow", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##High Surf
 weather.data.of.interest$EVTYPE <- gsub("^rough surf.*|^rough seas.*|^rogue wave.*|.*high.*surf.*|^heavy surf.*|heavy swells|heavy seas|hazardous surf|rapidly rising water", "High Surf", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##High Wind
-weather.data.of.interest$EVTYPE <- gsub("^high wind.*|^wind.*|.*high.*wind.*|gustnado|gusty.*wind.*|gradient wind|non-severe wind.*", "High Wind", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+weather.data.of.interest$EVTYPE <- gsub("^high wind.*|^wind.*|.*high.*wind.*|gustnado|gusty.*wind.*|gradient wind|non-severe wind.*|.*mircoburst.*", "High Wind", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##Hurricane (Typhoon)
 weather.data.of.interest$EVTYPE <- gsub(".*typhoon.*|.*tsunami.*|.*hurricane.*", "Hurricane (Typhoon)",  weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##Ice Storm
-weather.data.of.interest$EVTYPE <- gsub(".*ice.*|.*icy.*", "Ice Storm",  weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+weather.data.of.interest$EVTYPE <- gsub(".*ice.*|.*icy.*|glaze", "Ice Storm",  weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##Lightning
 weather.data.of.interest$EVTYPE <- gsub(".*Lig[h]*[n]*[t]*[n]*ing.*", "Lightning", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##Marine Strong Wind
@@ -86,7 +97,7 @@ weather.data.of.interest$EVTYPE <- gsub(".*surge.*|^storm surge.*|high|.*high se
 weather.data.of.interest$EVTYPE <- gsub(".*tstm.*wind.*|^t[h]*u[n]*[d]*e[e]*r[e]*[s]*torm.*|thunderstorms.* wind[s].*|wins.*|^thunders.*", "Thunderstorm Wind", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 weather.data.of.interest$EVTYPE <- gsub("^severe thunderstorm.*", "Thunderstorm Wind", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##Tornado
-weather.data.of.interest$EVTYPE <- gsub(".*torndao.*|^whirlwind.*|.*tornado.*|funnel.*", "Tornado", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+weather.data.of.interest$EVTYPE <- gsub(".*torndao.*|landspout|^whirlwind.*|.*tornado.*|funnel.*", "Tornado", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##Tropical Depression
 weather.data.of.interest$EVTYPE <- gsub("^tropical depression.*", "Tropical Depression", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##Tropical Storm
@@ -102,25 +113,57 @@ weather.data.of.interest$EVTYPE <- gsub("^winter |winter winter storm.*|^snow.*|
 ##Winter Weather
 weather.data.of.interest$EVTYPE <- gsub("^hyperthermia.*|hypothermia.*|^light snow.*|^wintry mix.*", "Winter Weather", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 
-
-
-weather.data.of.interest$EVTYPE <- gsub("^winter storm.*", "Winter Storm", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
-weather.data.of.interest$EVTYPE <- gsub("^winter weather.*", "Winter Weather", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
-weather.data.of.interest$EVTYPE <- gsub("^wind.*", "High Wind", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
-weather.data.of.interest$EVTYPE <- gsub("^wild.*fire.*", "Wildfire", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
-weather.data.of.interest$EVTYPE <- gsub("^wild.*fire.*", "Winter Storm", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
-weather.data.of.interest$EVTYPE <- gsub("^wint[e]*ry mix", "Winter Storm", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
-weather.data.of.interest$EVTYPE <- gsub("^wa[y]*ter*spout.*", "Waterspout", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
-weather.data.of.interest$EVTYPE <- gsub("^volcanic.*", "Volcanic Ash", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
-weather.data.of.interest$EVTYPE <- gsub("^tropical storm.*", "Tropical Storm", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
-weather.data.of.interest$EVTYPE <- gsub("^summary.*", "Summary", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
-weather.data.of.interest$EVTYPE <- gsub("^t[h]*un[d]*e[rst]*or|rom.*win.*", "Thunderstorm Wind", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
-weather.data.of.interest$EVTYPE <- gsub("^[unseasonal, unusual].*[warm, hot].*", "Heat", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+##Other
+weather.data.of.interest$EVTYPE <- gsub("^Other.*|Apache County", "Other", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+```
+##Final list of events of interest for this analysis
+```{r}
 sort(unique(weather.data.of.interest$EVTYPE))
+```
+##Aggregate the results by EVTYPE
+This sesion of code will aggregate the results of the fatalities, injuries and property/crop damage.  This will be used to generate the visuals below to demonstrate the weather events with the most destructive impact.
+```{r aggregate results}
+total.fatalities <- aggregate(weather.data.of.interest[, "FATALITIES"], by = list(weather.data.of.interest[, "EVTYPE"]), FUN = sum, na.rm = TRUE)
+total.injuries <- aggregate(weather.data.of.interest[, "INJURIES"], by = list(weather.data.of.interest[, "EVTYPE"]), FUN = sum, na.rm = TRUE)
+
+colnames(total.fatalities) <- c("Event Type", "Total")
+colnames(total.injuries) <- c("Event Type", "Total")
+```
+##Assigning values to damage
+The data in the PROPDMGEXP and CROPDMGEXP appear to be an exponential.  However, some of the data is short-handed such as H for Hundred (or 10^2), K for Thousand (or 10^3), M for Million (or 10^6) and B for Billion (or 10^9).  The other values we will set to 0 as they seem to be errors.
+```{r fix exponents}
+##PROPDMGEXP fixes
+levels(weather.data.of.interest[, "PROPDMGEXP"]) <- c(unique(levels(weather.data.of.interest[, "PROPDMGEXP"])), 9)
+weather.data.of.interest[weather.data.of.interest[, "PROPDMGEXP"] == "", "PROPDMGEXP"] = 0
+weather.data.of.interest[
+                         (
+                           weather.data.of.interest[, "PROPDMGEXP"] == "-"
+                          |weather.data.of.interest[, "PROPDMGEXP"] == "+"
+                          |weather.data.of.interest[, "PROPDMGEXP"] == "?"
+                         ), "PROPDMGEXP"
+                        ] = 1
+weather.data.of.interest[weather.data.of.interest[, "PROPDMGEXP"] == "H", "PROPDMGEXP"] = 2
+weather.data.of.interest[weather.data.of.interest[, "PROPDMGEXP"] == "K", "PROPDMGEXP"] = 3
+weather.data.of.interest[weather.data.of.interest[, "PROPDMGEXP"] == "M", "PROPDMGEXP"] = 6
+weather.data.of.interest[weather.data.of.interest[, "PROPDMGEXP"] == "B", "PROPDMGEXP"] = 9
+
+##CROPDMGEXP fixes
+levels(weather.data.of.interest[, "CROPDMGEXP"]) <- c(unique(levels(weather.data.of.interest[, "CROPDMGEXP"])), 0, 1, 2, 3, 6, 9)
+weather.data.of.interest[weather.data.of.interest[, "CROPDMGEXP"] == "", "CROPDMGEXP"] = 0
+weather.data.of.interest[
+                         (
+                           weather.data.of.interest[, "CROPDMGEXP"] == "-"
+                          |weather.data.of.interest[, "CROPDMGEXP"] == "+"
+                          |weather.data.of.interest[, "CROPDMGEXP"] == "?"
+                         ), "CROPDMGEXP"
+                        ] = 1
+weather.data.of.interest[weather.data.of.interest[, "CROPDMGEXP"] == "H", "CROPDMGEXP"] = 2
+weather.data.of.interest[weather.data.of.interest[, "CROPDMGEXP"] == "K", "CROPDMGEXP"] = 3
+weather.data.of.interest[weather.data.of.interest[, "CROPDMGEXP"] == "M", "CROPDMGEXP"] = 6
+weather.data.of.interest[weather.data.of.interest[, "CROPDMGEXP"] == "B", "CROPDMGEXP"] = 9
 ```
 
 
 
-
-
 [1]: https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf
+[2]: https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2
