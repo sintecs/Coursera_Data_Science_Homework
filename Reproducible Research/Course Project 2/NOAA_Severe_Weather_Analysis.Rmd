@@ -26,7 +26,7 @@ summary(weather.data)
 ##Cleanup the EVTYPE column using grep
 Though the current [Storm Data Documentation][1] book in section 2.1.1, Storm Data Event Table denotes only 48 different event types, the raw data contains as of this writing 985 events.  As part of pre-processing of this file we will use grep and gsub with regular expressions to replace errors in the names (spelling, punctuation and etc.) with the correct event name from the Storm Data Event Table.  Also, items where there are characters after a known event name will have those characters stripped so the Storm Data Event Table name is used.  If there is an event where the name contains two (or more) values from the Storm Data Event Table the first one noted will be used.
 
-First we will find all EVTYPE values where there is an injury, fatality, property damage or crop damage.  Any rows with no injury or damage will be subsetted out as they aren't need for this evaluation.
+First we will find all EVTYPE values where there is an injury, fatality, property damage or crop damage.  Any rows with no injury or damage (i.e. a value of 0 or less) will be subsetted out as they aren't need for this evaluation.
 
 ```{r cleanup EVTYPE data, echo = FALSE}
 weather.data.of.interest <- weather.data[
@@ -37,61 +37,70 @@ weather.data.of.interest <- weather.data[
                                           weather.data[, "PROPDMG"] > 0
                                          ),
                                         ]
-evtypes.to.clean <- sort(unique(weather.data.of.interest[, "EVTYPE"]))
+
 ##Avalanche
-weather.data.of.interest$EVTYPE <- gsub(".*mud.*slide.*", "Avalanche", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
-weather.data.of.interest$EVTYPE <- gsub(".*avalanc[h]*e.*", "Avalanche", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+weather.data.of.interest$EVTYPE <- gsub(".*mud.*slide.*|.*avalanc[h]*e.*|^rock slide.*|.*landslide.*", "Avalanche", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##Cold/WindChill
-weather.data.of.interest$EVTYPE <- gsub("^unseasonabl.* cold.*", "Cold/Wind Chill", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
-weather.data.of.interest$EVTYPE <- gsub("^cold.*", "Cold/Wind Chill", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+weather.data.of.interest$EVTYPE <- gsub("^unseasonabl.* cold.*|^cold.*|^extreme.*cold.*|^extreme.*chill.*|fog and cold.*|low temperature", "Cold/Wind Chill", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+##Excessive Heat
+weather.data.of.interest$EVTYPE <- gsub(".*excessive heat.*|.*extreme heat.*", "Excessive Heat", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+##Extreme Cold/Wind Chill
+weather.data.of.interest$EVTYPE <- gsub(".*record.*cold.*", "Extreme Cold/Wind Chill", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##Flood
-weather.data.of.interest$EVTYPE <- gsub(".*flood.*", "Flood", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
-weather.data.of.interest$EVTYPE <- gsub(".*urban.*", "Flood", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+weather.data.of.interest$EVTYPE <- gsub(".*flood.*|.*urban.*", "Flood", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##Frost/Freeze
-weather.data.of.interest$EVTYPE <- gsub(".*frost.*", "Frost/Freeze", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
-weather.data.of.interest$EVTYPE <- gsub(".*freeze.*", "Frost/Freeze", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
-weather.data.of.interest$EVTYPE <- gsub(".*freezing.*", "Frost/Freeze", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+weather.data.of.interest$EVTYPE <- gsub(".*frost.*|.*freezing.*|.*freeze.*", "Frost/Freeze", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##Hail
 weather.data.of.interest$EVTYPE <- gsub(".*hail.*", "Hail", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##Heat
-weather.data.of.interest$EVTYPE <- gsub("^unseasonably warm.*", "Heat", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
-weather.data.of.interest$EVTYPE <- gsub("^heat.*", "Heat", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+weather.data.of.interest$EVTYPE <- gsub("^unseasonably warm.*|.*drought.*|.*fire.*|^heat.*|^record.*heat.*", "Heat", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##Heavy Rain
-weather.data.of.interest$EVTYPE <- gsub(".*microburst.*", "Heavy Rain", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
-weather.data.of.interest$EVTYPE <- gsub(".*unseasonal rain.*", "Heavy Rain", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
-weather.data.of.interest$EVTYPE <- gsub(".*torrential rain.*", "Heavy Rain", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+weather.data.of.interest$EVTYPE <- gsub(".*microburst.*|.*torrential rain.*|.*unseasonal rain.*|.*heavy.*rain.*|.*heavy.*mix.*|mixed.*precipitation.*|record.*rainfall|.*rain/wind.*|rain|mixed precip", "Heavy Rain", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##Heavy Snow
-weather.data.of.interest$EVTYPE <- gsub("^heavy snow.*", "Heavy Snow", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+weather.data.of.interest$EVTYPE <- gsub("^heavy snow.*.*lake.*effect.*|.*snow.*|.*blizzard.*", "Heavy Snow", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+##High Surf
+weather.data.of.interest$EVTYPE <- gsub("^rough surf.*|^rough seas.*|^rogue wave.*|.*high.*surf.*|^heavy surf.*|heavy swells|heavy seas|hazardous surf|rapidly rising water", "High Surf", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##High Wind
-weather.data.of.interest$EVTYPE <- gsub("^high wind.*", "High Wind", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+weather.data.of.interest$EVTYPE <- gsub("^high wind.*|^wind.*|.*high.*wind.*|gustnado|gusty.*wind.*|gradient wind|non-severe wind.*", "High Wind", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##Hurricane (Typhoon)
-weather.data.of.interest$EVTYPE <- gsub(".*hurricane.*", "Hurricane (Typhoon)", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
-weather.data.of.interest$EVTYPE <- gsub(".*typhoon.*", "Hurricane (Typhoon)", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
-weather.data.of.interest$EVTYPE <- gsub(".*tsunami.*", "Hurricane (Typhoon)", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+weather.data.of.interest$EVTYPE <- gsub(".*typhoon.*|.*tsunami.*|.*hurricane.*", "Hurricane (Typhoon)",  weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+##Ice Storm
+weather.data.of.interest$EVTYPE <- gsub(".*ice.*|.*icy.*", "Ice Storm",  weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##Lightning
 weather.data.of.interest$EVTYPE <- gsub(".*Lig[h]*[n]*[t]*[n]*ing.*", "Lightning", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+##Marine Strong Wind
+weather.data.of.interest$EVTYPE <- gsub("^Marine mishap.*|marine strong wind|marine accident.*", "Marine Strong Wind", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+##Marine Thunderstorm Wind
+weather.data.of.interest$EVTYPE <- gsub(".*marine thunderstorm wind.*|marine tstm wind", "Marine Thunderstorm Wind", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##Rip Current
 weather.data.of.interest$EVTYPE <- gsub(".*rip current.*", "Rip Current", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+##Seiche
+weather.data.of.interest$EVTYPE <- gsub("^seiche.*", "Seiche", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+##Sleet
+weather.data.of.interest$EVTYPE <- gsub("^sleet.*", "Sleet", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##Strong Wind
-weather.data.of.interest$EVTYPE <- gsub("^strong wind.*", "Strong Wind", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+weather.data.of.interest$EVTYPE <- gsub("^strong wind.*|^storm force.*|^Severe turbulence.*|non.*tstm.*wind.*", "Strong Wind", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##Storm Surge
-weather.data.of.interest$EVTYPE <- gsub("^storm surge.*", "Storm Surge/Tide", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+weather.data.of.interest$EVTYPE <- gsub(".*surge.*|^storm surge.*|high|.*high seas.*|high.*tides.*|.*storm surge.*", "Storm Surge/Tide", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##Thunderstorm Wind
-weather.data.of.interest$EVTYPE <- gsub("^t[h]*u[n]*[d]*e[e]*r[e]*[s]*torm.*|thunderstorms.* wind[s].*|wins.*", "Thunderstorm Wind", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+weather.data.of.interest$EVTYPE <- gsub(".*tstm.*wind.*|^t[h]*u[n]*[d]*e[e]*r[e]*[s]*torm.*|thunderstorms.* wind[s].*|wins.*|^thunders.*", "Thunderstorm Wind", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 weather.data.of.interest$EVTYPE <- gsub("^severe thunderstorm.*", "Thunderstorm Wind", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##Tornado
-weather.data.of.interest$EVTYPE <- gsub(".*tornado.*", "Tornado", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
-weather.data.of.interest$EVTYPE <- gsub(".*torndao.*", "Tornado", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
-weather.data.of.interest$EVTYPE <- gsub("^whirlwind.*", "Tornado", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+weather.data.of.interest$EVTYPE <- gsub(".*torndao.*|^whirlwind.*|.*tornado.*|funnel.*", "Tornado", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##Tropical Depression
 weather.data.of.interest$EVTYPE <- gsub("^tropical depression.*", "Tropical Depression", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+##Tropical Storm
+weather.data.of.interest$EVTYPE <- gsub("^tstm.*|^tropical storm.*", "Tropical Storm", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+##Volcanic Ash
+weather.data.of.interest$EVTYPE <- gsub("^Volcanic.*", "Volcanic Ash", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+##Waterspout
+weather.data.of.interest$EVTYPE <- gsub(".*waterspout.*", "Waterspout", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+##Wildfire
+weather.data.of.interest$EVTYPE <- gsub("^wildfire.*|.*wild.*fire.*", "Wildfire", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##Winter Storm
-weather.data.of.interest$EVTYPE <- gsub("^snow.*", "Winter Storm", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
-weather.data.of.interest$EVTYPE <- gsub("^winter |winter winter storm.*|weather.*", "Winter Storm", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
-weather.data.of.interest$EVTYPE <- gsub(".*winter storm.*", "Winter Storm", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+weather.data.of.interest$EVTYPE <- gsub("^winter |winter winter storm.*|^snow.*|weather.*|.*winter storm.*", "Winter Storm", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 ##Winter Weather
-weather.data.of.interest$EVTYPE <- gsub("^hyperthermia.*|hypothermia.*", "Winter Weather", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
-weather.data.of.interest$EVTYPE <- gsub("^light snow.*", "Winter Weather", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
+weather.data.of.interest$EVTYPE <- gsub("^hyperthermia.*|hypothermia.*|^light snow.*|^wintry mix.*", "Winter Weather", weather.data.of.interest$EVTYPE, ignore.case = TRUE)
 
 
 
